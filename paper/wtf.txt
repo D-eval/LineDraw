@@ -1,0 +1,197 @@
+
+% \begin{figure}[htbp]
+% \centering
+
+% \begin{tikzpicture}[
+%     node distance=8mm,
+%     block/.style={
+%         rectangle,
+%         draw,
+%         rounded corners,
+%         align=center,
+%         minimum width=3.5cm,
+%         minimum height=0.9cm
+%     },
+%     arrow/.style={
+%         -{Latex},
+%         thick
+%     }
+% ]
+
+% \node[block] (audio)
+% {
+% Stereo Audio
+% % 中文：立体声音频。
+% };
+
+% \node[block, below=of audio] (cqt)
+% {
+% Multi-Window CQT
+% % 中文：多窗 CQT。
+% };
+
+% \node[block, below=of cqt] (norm)
+% {
+% Local Frequency\\
+% Normalization
+% % 中文：局部频率归一化。
+% };
+
+% \node[block, below=of norm] (spec)
+% {
+% Normalized Spectrogram
+% % 中文：归一化频谱图。
+% };
+
+% \node[block, below=of spec] (peak)
+% {
+% Peak Selection
+% % 中文：峰值选择。
+% };
+
+% \node[block, below=of peak] (track)
+% {
+% Bidirectional\\
+% Line Tracking
+% % 中文：双向线跟踪。
+% };
+
+% \node[block, below=of track] (width)
+% {
+% Bandwidth Estimation
+% % 中文：带宽估计。
+% };
+
+% \node[block, below=of width] (sub)
+% {
+% Residual Subtraction
+% % 中文：残差扣除。
+% };
+
+% \node[block, below=of sub] (event)
+% {
+% Line Events
+% % 中文：线事件。
+% };
+
+% \node[block, below left=10mm and 12mm of event] (note)
+% {
+% Note List
+% % 中文：音符列表。
+% };
+
+% \node[block, below right=10mm and 12mm of event] (resyn)
+% {
+% Sinusoidal\\
+% Resynthesis
+% % 中文：正弦重合成。
+% };
+
+% \draw[arrow] (audio) -- (cqt);
+% \draw[arrow] (cqt) -- (norm);
+% \draw[arrow] (norm) -- (spec);
+% \draw[arrow] (spec) -- (peak);
+% \draw[arrow] (peak) -- (track);
+% \draw[arrow] (track) -- (width);
+% \draw[arrow] (width) -- (sub);
+% \draw[arrow] (sub) -- (event);
+
+% \draw[arrow] (event) -- (note);
+% \draw[arrow] (event) -- (resyn);
+
+% \end{tikzpicture}
+
+% \caption{
+% Overview of the proposed LineDraw framework.
+% % 中文：所提出的 LineDraw 框架概览。
+% A stereo audio signal is first transformed into a normalized multi-window CQT representation.
+% % 中文：首先将立体声音频信号转换为归一化的多窗 CQT 表示。
+% The algorithm iteratively extracts sparse line events through peak selection, bidirectional line tracking, bandwidth estimation, and residual subtraction.
+% % 中文：算法通过峰值选择、双向线跟踪、带宽估计和残差扣除迭代提取稀疏线事件。
+% The resulting line events can be converted into note lists or used for sinusoidal resynthesis.
+% % 中文：得到的线事件可以转换为音符列表，或用于正弦重合成。
+% }
+% \label{fig:linedraw_pipeline}
+
+% \end{figure}
+
+
+% \begin{algorithm}[htbp]
+% \caption{LineDraw Event Extraction}
+% \label{alg:linedraw}
+% \begin{algorithmic}[1]
+
+% \Require Normalized spectrogram $X \in \mathbb{R}^{T \times F}$
+
+% \State $R \leftarrow X$
+% \State $\mathcal{E} \leftarrow \emptyset$
+
+% \While{$\max(R) > \tau$}
+
+%     \State $(t_0,f_0)\leftarrow \arg\max R$
+
+%     \State Estimate bandwidth $w_0$ at $(t_0,f_0)$
+
+%     \State Initialize line
+%     $
+%     L \leftarrow
+%     \{(t_0,f_0,a_0,w_0)\}
+%     $
+
+%     \State Track line backward in time
+
+%     \While{continuity condition satisfied}
+
+%         \State Search neighboring frequencies
+%         $
+%         f\in[f-r,f+r]
+%         $
+
+%         \State Select strongest candidate
+
+%         \State Estimate bandwidth
+
+%         \State Append to front of $L$
+
+%     \EndWhile
+
+%     \State Track line forward in time
+
+%     \While{continuity condition satisfied}
+
+%         \State Search neighboring frequencies
+%         $
+%         f\in[f-r,f+r]
+%         $
+
+%         \State Select strongest candidate
+
+%         \State Estimate bandwidth
+
+%         \State Append to end of $L$
+
+%     \EndWhile
+
+%     \If{$|L| > L_{\min}$}
+
+%         \State Add line to event set
+%         $
+%         \mathcal{E}
+%         \leftarrow
+%         \mathcal{E}\cup\{L\}
+%         $
+
+%         \State Subtract line energy from residual spectrogram
+
+%     \Else
+
+%         \State Suppress current peak
+
+%     \EndIf
+
+% \EndWhile
+
+% \State \Return Event set $\mathcal{E}$
+
+% \end{algorithmic}
+% \end{algorithm}

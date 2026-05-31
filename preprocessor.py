@@ -28,7 +28,7 @@ class FeatureExtractor:
 
         # audio *= 10 # 验证幅度不变性
 
-        cqt, _, _ = cls.preprocessor(audio)
+        cqt, times, freqs = cls.preprocessor(audio)
 
         cqt = cqt[0,...] # (T, F, W)
 
@@ -65,7 +65,7 @@ class FeatureExtractor:
         energy_freq = energy_freq.squeeze(1)
 
         cqt_TF_norm = cqt_TF_maxW / (energy_freq + 1e-9)
-        return cqt_TF_norm
+        return cqt_TF_norm, times, freqs, energy_freq
     
 if __name__ == "__main__":
     extractor = FeatureExtractor()

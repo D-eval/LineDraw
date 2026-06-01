@@ -150,3 +150,5 @@ Ultimately, we hope to build systems that understand sound by learning how to dr
 不过总之还是先撂在这吧，
 
 大后天见。
+
+算了，既然想到了就把 state_action_table 写一下吧

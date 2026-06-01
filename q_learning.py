@@ -25,29 +25,33 @@ class Node:
     """
         每个点选择之后的某个点
     """
-    def __init__(self, post_nodes, t, f):
+    def __init__(self, previous_nodes, post_nodes, t, f):
         """
             post_nodes: List int, idx of freq
         """
         self.meta = (t, f)
         
+        m = len(previous_nodes)
         n = len(post_nodes)
+        
+        # state: m + 1, 被任何人连了或者没被连, 频谱关注local_state即可
+        # action: n + 1, 去连后人或者谁都不连
+
+        self.state_num = m + 1
         self.action_num = n + 1
         
-        self.q_table = np.zeros(self.action_num)
+        self.q_table = np.zeros((self.state_num, self.action_num))
+        self.previous_nodes = previous_nodes + [-1] # 被之前某个点连接，或者没人要
         self.next_nodes = post_nodes + [-1] # 和之后的点连接，或者 idle
+        
         self.actions = torch.arange(self.action_num).tolist()
         
-        self.reset()
-    def reset(self):
-        self.current_action = None
-        self.aw = None # Tuple[float, float], amp, width
-        
-    def sample(self):
+    def sample(self, state):
         """
+        state: 0~m
         post_nodes
         """
-        policy = self.q_table / (self.q_table.sum()) # 暂时这样，之后用 mcts
+        policy = self.q_table[state, :] / (self.q_table[state, :].sum()) # 暂时这样，之后用 mcts
         choice = random.choice(self.actions, self.q_table)
         return choice
 
@@ -63,10 +67,15 @@ class QlineDraw:
             node_lst_f = []
             for f in range(F):
                 if t==T-1:
-                    node_lst_f.append(Node([], t, f))
+                    candidate = torch.arange(max(f-self.radius, 0), min(f+self.radius, F)).tolist()
+                    node_lst_f.append(Node(candidate, [], t, f))
+                elif t==0:
+                    candidate = torch.arange(max(f-self.radius, 0), min(f+self.radius, F)).tolist()
+                    node = Node([], candidate, t, f)
+                    node_lst_f.append(node)
                 else:
                     candidate = torch.arange(max(f-self.radius, 0), min(f+self.radius, F)).tolist()
-                    node = Node(candidate, t, f)
+                    node = Node(candidate, candidate, t, f)
                     node_lst_f.append(node)
             node_lst_tf.append(node_lst_f)
         self.node_lst_tf = node_lst_tf
@@ -122,7 +131,18 @@ class QlineDraw:
         for t in range(self.shape[0]):
             for f in range(self.shape[1]):
                 node = self.node_lst_tf[t][f]
-                action = node.sample()
+                if t==0:
+                    state=-1
+                else:
+                    candidate_previous = node.previous_nodes
+                    for line in temp_events:
+                        # TODO: 仍然要考虑汇流情况，之后再说
+                        state = -1
+                        if line[-1][1] in candidate_previous:
+                            state = candidate_previous.index(line[-1][1])
+                            break
+                        
+                action = node.sample(state)
                 next_node = node.next_nodes[action]
                 if next_node == -1:
                     # TODO
@@ -132,7 +152,7 @@ class QlineDraw:
                     # TODO
                     pass
                     continue
-                if t+1 <= self.shape[0]+1:
+                if t+1 < self.shape[0]:
                     max_future_value = self.node_lst_tf[t+1][next_node].q_table.max()
                 else:
                     max_future_value = 0
@@ -148,6 +168,6 @@ class QlineDraw:
                         temp_residual_energy = residual
                         break
                     
-                q_s_a = node.q_table[action]
+                q_s_a = node.q_table[state, action]
                 q_s_a = (1-alpha)*q_s_a + alpha*(reward + gamma * max_future_value)
-                node.q_table = q_s_a
+                node.q_table[state, action] = q_s_a

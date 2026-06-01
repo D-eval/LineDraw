@@ -61,6 +61,9 @@ class QlineDraw:
     
     alpha = 0.01 # lr
     gamma = 0.1 # TD decay
+    
+    event_punishment = 3
+    
     def __init__(self, T, F):
         node_lst_tf = []
         for t in range(T):
@@ -89,12 +92,12 @@ class QlineDraw:
         assert x.shape==self.shape
         events = self.linedraw(x)
         # TODO:用 events 初始化 q_table
-        
-    def optim(self, events, il, t, f, x, num_step=10, lr=1e-3):
+
+    def optim_old(self, events, il, t, f, x, num_step=10, lr=1e-3):
         a = torch.tensor(1, requires_grad=True)
         w = torch.tensor(1, requires_grad=True)
         optimizer = torch.optim.Adam([a, w], lr=lr)
-        events[il].append(t,f,a,w)
+        events[il].append((t,f,a,w))
         for step in range(num_step):
             wav = self.linedraw.events_to_wav(events)
             # TODO:这里 cqt 不能 padding
@@ -119,6 +122,38 @@ class QlineDraw:
             w.detach().item()
         )
         return l1.detach().item()
+        
+
+    def optim_new(self, events, t, f, x, num_step=10, lr=1e-3):
+        a = torch.tensor(1, requires_grad=True)
+        w = torch.tensor(1, requires_grad=True)
+        optimizer = torch.optim.Adam([a, w], lr=lr)
+        events.append([(t,f,a,w)])
+        for step in range(num_step):
+            wav = self.linedraw.events_to_wav(events)
+            # TODO:这里 cqt 不能 padding
+            x_rec, _, _, _ = self.extractor(wav)
+            T1 = x_rec.shape[0]
+            l1 = ((x[:T1, :] - x_rec)**2).sum()
+            
+            l1.backward()
+                        
+            print(a.grad)
+            print(w.grad)
+            assert 0
+            
+            optimizer.step()
+            events[-1] = [(t,f,a,w)]
+            optimizer.zero_grad()
+            
+        events[-1] = [(
+            t,
+            f,
+            a.detach().item(),
+            w.detach().item()
+        )]
+        return l1.detach().item()
+        
         
     def episode(self, x):
         alpha = self.alpha
@@ -158,16 +193,24 @@ class QlineDraw:
                     max_future_value = 0
        
                 # instant reward
-                for il, line in enumerate(temp_events):
-                    # 寻找连接到自己的线，找到一条即可, TODO: 多条线汇合的情况
-                    if (line[-1][0]==t) & (line[-1][1]==f):
-                        residual = self.optim(temp_events, il, t, f, x)
-                        # residual 越小越好
-                        # reward 就是加入动作后 整体 residual 的减少量
-                        reward = temp_residual_energy - residual
-                        temp_residual_energy = residual
-                        break
+                if state != -1:
+                    previous_f = node.previous_nodes[state]
+                    for il, line in enumerate(temp_events):
+                        if (line[-1][0]==t-1) & (line[-1][1]==previous_f):
+                            residual = self.optim_old(temp_events, il, t, f, x)
+                            # residual 越小越好
+                            # reward 就是加入动作后 整体 residual 的减少量
+                            reward = temp_residual_energy - residual
+                            temp_residual_energy = residual
+                            break
+                else:
+                    residual = self.optim_new(temp_events, t, f, x)
+                    # residual 越小越好
+                    # reward 就是加入动作后 整体 residual 的减少量
+                    reward = temp_residual_energy - residual - self.event_punishment
+                    temp_residual_energy = residual
                     
+                        
                 q_s_a = node.q_table[state, action]
                 q_s_a = (1-alpha)*q_s_a + alpha*(reward + gamma * max_future_value)
                 node.q_table[state, action] = q_s_a

@@ -338,11 +338,10 @@ class LineDraw:
             mono waveform (N,)
         """
         if len(lines) == 0:
-            return np.zeros(1, dtype=np.float32)
+            return torch.zeros(1)
 
-        y = np.zeros(
+        y = torch.zeros(
             total_samples,
-            dtype=np.float32
         )
 
         phase = 0.0
@@ -361,11 +360,11 @@ class LineDraw:
 
             n = end - start
 
-            ts = np.arange(n) / sr
+            ts = torch.arange(n) / sr
 
             seg = (
                 a *
-                np.sin(
+                torch.sin(
                     phase +
                     2*np.pi*freq*ts
                 )

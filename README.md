@@ -130,3 +130,23 @@ The long-term goal is:
 This can be viewed as a sparse reconstruction problem, a minimum description length problem, or a sequential drawing problem.
 
 Ultimately, we hope to build systems that understand sound by learning how to draw it.
+
+# 2026/06/01
+
+大后天考PDE，考完继续写q_learning
+
+感觉这个其实不算 state -> action 的查询
+
+因为首先这个 state 是局部的
+
+也就是当我走到这一步的时候我才查询。
+
+也就是说我们要区分，如果之前有人走到这一步了
+
+以及这一步是新创建的，
+
+这应该被区分为不同的动作。
+
+不过总之还是先撂在这吧，
+
+大后天见。
